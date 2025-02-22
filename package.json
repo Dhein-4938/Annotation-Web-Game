@@ -1,0 +1,21 @@
+{
+  "name": "annotation-game",
+  "version": "1.0.0",
+  "description": "**Pathfinder Chronicles** is an engaging annotation game that transforms the process of mapping 2D height map data into an immersive adventure. In this game, you step into the shoes of an elite cartographer tasked with exploring uncharted mountain ranges to create safe paths for adventurers, rescue missions, or treasure hunts. This README provides an in-depth look at the game’s narrative, mechanics, features, technical considerations, and future improvements.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "http-server ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "three": "^0.173.0"
+  }
+}
