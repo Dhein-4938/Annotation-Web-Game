@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { io } from 'socket.io-client';
 import gsap from "gsap";
 import { initScene, setupLighting, setupControls } from './sceneSetup.js';
-import { createTerrainMesh, updateVertexHeights, loadHeightData } from './terrain.js';
+import { createTerrainMesh, createTerrainGeometry, updateGeometryHeights, loadHeightData } from './terrain.js';
 
 console.log('THREE version:', THREE.REVISION);
 
@@ -20,9 +20,10 @@ socket.on('disconnect', () => {
 
 // Configuration
 const config = {
-    chunkSizes: [10, 20, 50, 100, 200, 500, 750, 1000, 1500, 2000],
+    chunkSizes: [10, 20, 50, 100, 200, 500, 750, 1000, 1500],
     chunkSizeIndex: 4,
     chunkPosition: { x: 200.0, y: 200.0 },
+    meshPosition: { x: 0, y: 0 , z: 0 },
     scale: { height: 20, plane: 10 },
     mapSize: { width: 10000, height: 10000 },     // to be updated after loading height data
     moveStepScale: 0.25,
@@ -33,16 +34,12 @@ let currentTerrainMesh = null;
 let heightData = null;
 
 // Main setup function
-function createHeightMap(scene, controls) {
-    const chunkSize = config.chunkSizes[config.chunkSizeIndex];
-    const plane = config.scale.plane;
-    const geometry = new THREE.PlaneGeometry(plane, plane, chunkSize - 1, chunkSize - 1);
+function createSingleChunkTerrain(scene, controls) {
+    const geometry = createTerrainGeometry(config, 1, 1);
 
-    updateVertexHeights(geometry, config, heightData);
+    updateGeometryHeights(geometry, config, heightData);
     const mesh = createTerrainMesh(geometry);
-    if (currentTerrainMesh) {
-        scene.remove(currentTerrainMesh);
-    }
+    if (currentTerrainMesh)  scene.remove(currentTerrainMesh);
     scene.add(mesh);
     currentTerrainMesh = mesh;
 
@@ -54,26 +51,37 @@ function updateChunkLocationDisplay() {
     chunkLocationElement.textContent = `Chunk: (${config.chunkPosition.x.toFixed(2)}, ${config.chunkPosition.y.toFixed(2)})`;
 }
 
-function moveChunkPosition(deltaX, deltaY = deltaX) {
-    config.chunkPosition.x = THREE.MathUtils.clamp(config.chunkPosition.x + deltaX, 0, config.mapSize.width);
-    config.chunkPosition.y = THREE.MathUtils.clamp(config.chunkPosition.y + deltaY, 0, config.mapSize.height);    
+function moveChunkPosition(dx, dy = dx) {
+    config.chunkPosition.x = THREE.MathUtils.clamp(config.chunkPosition.x + dx, 0, config.mapSize.width);
+    config.chunkPosition.y = THREE.MathUtils.clamp(config.chunkPosition.y + dy, 0, config.mapSize.height);    
+}
+
+function moveMeshPosition(directionX, directionY = directionX) {
+    const meshStepSize = config.scale.plane;
+    const meshTargetX = THREE.MathUtils.clamp(config.meshPosition.x + directionY * meshStepSize, -meshStepSize, meshStepSize);
+    const meshTargetZ = THREE.MathUtils.clamp(config.meshPosition.z + directionX * meshStepSize, -meshStepSize, meshStepSize);
+    // Update the mesh position to target before moving
+    config.meshPosition.x = meshTargetX;
+    config.meshPosition.z = meshTargetZ;
+
+    gsap.to(currentTerrainMesh.position, {
+        duration: 1,
+        x: meshTargetX,
+        z: meshTargetZ,
+        ease: "power4.out",
+        onUpdate: () => {
+            updateChunkLocationDisplay();
+        }
+    });
 }
 
 function moveChunk(directionX, directionY) {
-    // Update the start position and recreate the height map
+    // Update the start position and move the terrain mesh
     const stepSize = config.moveStepScale * config.chunkSizes[config.chunkSizeIndex];
-    const targetX = config.chunkPosition.x + directionX * stepSize;
-    const targetY = config.chunkPosition.y + directionY * stepSize;
-
-    gsap.to(config.chunkPosition, {
-        x: targetX,
-        y: targetY,
-        duration: 1,
-        ease: "power4.out",
-        onUpdate: () => {
-            updateDisplay();
-        }
-    });
+    
+    moveMeshPosition(directionX, directionY);
+    
+    // moveChunkPosition(directionX * stepSize, directionY * stepSize);
 }
 
 function handleZoom(direction) {
@@ -81,16 +89,15 @@ function handleZoom(direction) {
     const oldChunkSize = config.chunkSizes[config.chunkSizeIndex];
     
     // Update chunk size index with bounds checking
-    config.chunkSizeIndex = Math.min(
-        Math.max(config.chunkSizeIndex + direction, 0), 
+    config.chunkSizeIndex = THREE.MathUtils.clamp(
+        config.chunkSizeIndex + direction,
+        0,
         config.chunkSizes.length - 1
     );
     
     // Recenter chunk position with new size
     const newChunkSize = config.chunkSizes[config.chunkSizeIndex];
-    moveChunkPosition(
-        oldChunkSize / 2 - newChunkSize / 2
-    );
+    moveChunkPosition(  oldChunkSize / 2 - newChunkSize / 2);
     console.log(`Chunk size: ${newChunkSize}`);
 }
 
@@ -129,7 +136,7 @@ function handleMovement(key) {
 }
 
 function updateDisplay() {
-    createHeightMap(scene, controls);
+    createSingleChunkTerrain(scene, controls);
     updateChunkLocationDisplay();
 }
 
@@ -153,7 +160,7 @@ loadHeightData('data/height_cache_H282.bin').then(({ heightData: data, rows, col
     heightData = data;
     config.mapSize.width = rows;
     config.mapSize.height = cols;
-    createHeightMap(scene, controls);
+    createSingleChunkTerrain(scene, controls);
     updateChunkLocationDisplay();
     // Hide loading overlay
     loadingOverlay.style.display = 'none';

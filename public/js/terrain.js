@@ -12,7 +12,7 @@ export function createTerrainMesh(geometry) {
     return mesh;
 }
 
-export function updateVertexHeights(geometry, config, heightData) {
+export function updateGeometryHeights(geometry, config, heightData) {
     const vertices = geometry.attributes.position.array;
     const position = config.chunkPosition;
     const chunkSize = config.chunkSizes[config.chunkSizeIndex];
@@ -60,4 +60,11 @@ export async function loadHeightData(url) {
         console.error('Error loading height data:', error);
         return { heightData: [], rows: 0, cols: 0 };
     }
+}
+
+export function createTerrainGeometry(config, rows, cols) {
+    const chunkSize = config.chunkSizes[config.chunkSizeIndex];
+    const plane = config.scale.plane;
+    const geometry = new THREE.PlaneGeometry(plane * rows, plane * cols, chunkSize * rows - 1, chunkSize * cols - 1);
+    return geometry;
 }
