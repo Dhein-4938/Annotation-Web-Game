@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { io } from 'socket.io-client';
 import gsap from "gsap";
 import { initScene, setupLighting, setupControls } from './sceneSetup.js';
-import { createTerrainMesh, createTerrainGeometry, updateGeometryHeights, loadHeightData } from './terrain.js';
+import { loadHeightData, generateTerrainChunks, createTerrainForPosition } from './terrain.js';
+import { createAxisHelper } from './axisHelper.js';
 
 console.log('THREE version:', THREE.REVISION);
 
@@ -29,60 +30,110 @@ const config = {
     moveStepScale: 0.25,
     cameraPosition: { x: -5, y: 5, z: 0 }
 };
-
-let currentTerrainMesh = null;
+const mesh3x3 = [];
 let heightData = null;
-
-// Main setup function
-function createSingleChunkTerrain(scene, controls) {
-    const geometry = createTerrainGeometry(config, 1, 1);
-
-    updateGeometryHeights(geometry, config, heightData);
-    const mesh = createTerrainMesh(geometry);
-    if (currentTerrainMesh)  scene.remove(currentTerrainMesh);
-    scene.add(mesh);
-    currentTerrainMesh = mesh;
-
-    controls.update();
-}
 
 function updateChunkLocationDisplay() {
     const chunkLocationElement = document.getElementById('chunk-location');
     chunkLocationElement.textContent = `Chunk: (${config.chunkPosition.x.toFixed(2)}, ${config.chunkPosition.y.toFixed(2)})`;
 }
 
-function moveChunkPosition(dx, dy = dx) {
+function updateConfigChunkPosition(dx, dy = dx) {
     config.chunkPosition.x = THREE.MathUtils.clamp(config.chunkPosition.x + dx, 0, config.mapSize.width);
     config.chunkPosition.y = THREE.MathUtils.clamp(config.chunkPosition.y + dy, 0, config.mapSize.height);    
 }
 
-function moveMeshPosition(directionX, directionY = directionX) {
-    const meshStepSize = config.scale.plane;
-    const meshTargetX = THREE.MathUtils.clamp(config.meshPosition.x + directionY * meshStepSize, -meshStepSize, meshStepSize);
-    const meshTargetZ = THREE.MathUtils.clamp(config.meshPosition.z + directionX * meshStepSize, -meshStepSize, meshStepSize);
-    // Update the mesh position to target before moving
-    config.meshPosition.x = meshTargetX;
-    config.meshPosition.z = meshTargetZ;
-
-    gsap.to(currentTerrainMesh.position, {
-        duration: 1,
-        x: meshTargetX,
-        z: meshTargetZ,
-        ease: "power4.out",
-        onUpdate: () => {
-            updateChunkLocationDisplay();
+function highlightCenterChunk() {
+    mesh3x3.forEach(chunk => {
+        if (chunk.position.x === config.chunkPosition.x &&
+            chunk.position.z === config.chunkPosition.y) {
+            chunk.material.opacity = 1;
+        } else {
+            chunk.material.opacity = 0.3;
         }
     });
 }
 
-function moveChunk(directionX, directionY) {
-    // Update the start position and move the terrain mesh
-    const stepSize = config.moveStepScale * config.chunkSizes[config.chunkSizeIndex];
+function moveChunk(directionX, directionY = directionX) {
+    const { meshStepSize, chunkSize } = {
+        meshStepSize: config.scale.plane,
+        chunkSize: config.chunkSizes[config.chunkSizeIndex]
+    };
     
-    moveMeshPosition(directionX, directionY);
+    // Move chunk position
+    updateConfigChunkPosition(directionX * chunkSize, directionY * chunkSize);
     
-    // moveChunkPosition(directionX * stepSize, directionY * stepSize);
+    // Identify chunks to remove based on movement direction
+    const oldChunks = mesh3x3.filter(chunk => {
+        if (directionX > 0) return chunk.position.z <= -meshStepSize;
+        if (directionX < 0) return chunk.position.z >= meshStepSize;
+        if (directionY > 0) return chunk.position.x <= -meshStepSize;
+        if (directionY < 0) return chunk.position.x >= meshStepSize;
+        return false;
+    });
+
+    // Animate and remove old chunks
+    oldChunks.forEach(chunk => {
+        gsap.to(chunk.position, { duration: 1, y: -10, ease: "power4.out" });
+        gsap.to(chunk.material, {
+            duration: 1,
+            opacity: 0,
+            ease: "power4.out",
+            onComplete: () => {
+                scene.remove(chunk);
+                mesh3x3 = mesh3x3.filter(m => m !== chunk);
+            }
+        });
+    });
+
+    // Generate new chunk positions based on the xy directions
+    const positions = [
+        { x: directionX > 0 ? 1 : directionX < 0 ? -1 : -1, 
+          z: directionY > 0 ? 1 : directionY < 0 ? -1 : -1 },
+        { x: directionX > 0 ? 1 : directionX < 0 ? -1 : 0, 
+          z: directionY > 0 ? 1 : directionY < 0 ? -1 : 0 },
+        { x: directionX > 0 ? 1 : directionX < 0 ? -1 : 1, 
+          z: directionY > 0 ? 1 : directionY < 0 ? -1 : 1 }
+    ];
+
+
+    // Create new chunks only for positions that don't exist yet
+    const newChunks = positions
+        .map(pos => createTerrainForPosition(
+            config, 
+            heightData, 
+            {gridX: pos.x, gridY: pos.z}, 
+            0.3
+        ))
+
+    // Add and animate new chunks
+    newChunks.forEach(chunk => {
+        chunk.position.y = -10;
+        chunk.material.opacity = 0;
+        scene.add(chunk);
+        mesh3x3.push(chunk);
+
+        gsap.to(chunk.position, { duration: 1, y: 0, ease: "power4.out" });
+        gsap.to(chunk.material, { duration: 1, opacity: 1, ease: "power4.out" });
+    });
+
+    // Update remaining chunks positions
+    const remainingChunks = mesh3x3.filter(chunk => 
+        !oldChunks.includes(chunk) && !newChunks.includes(chunk)
+    );
+
+    remainingChunks.forEach(chunk => {
+        gsap.to(chunk.position, {
+            duration: 1,
+            x: chunk.position.x - directionY * meshStepSize,
+            z: chunk.position.z - directionX * meshStepSize,
+            ease: "power4.out"
+        });
+    });
+
+    updateChunkLocationDisplay();
 }
+
 
 function handleZoom(direction) {
     // Calculate center point of current chunk
@@ -97,7 +148,7 @@ function handleZoom(direction) {
     
     // Recenter chunk position with new size
     const newChunkSize = config.chunkSizes[config.chunkSizeIndex];
-    moveChunkPosition(  oldChunkSize / 2 - newChunkSize / 2);
+    updateConfigChunkPosition(  oldChunkSize / 2 - newChunkSize / 2);
     console.log(`Chunk size: ${newChunkSize}`);
 }
 
@@ -160,13 +211,20 @@ loadHeightData('data/height_cache_H282.bin').then(({ heightData: data, rows, col
     heightData = data;
     config.mapSize.width = rows;
     config.mapSize.height = cols;
-    createSingleChunkTerrain(scene, controls);
+    
+    mesh3x3.forEach(chunk => scene.remove(chunk));
+    mesh3x3 = generateTerrainChunks(config, heightData);
+    mesh3x3.forEach(chunk => scene.add(chunk));
+    controls.update();
     updateChunkLocationDisplay();
     // Hide loading overlay
     loadingOverlay.style.display = 'none';
     // Animation loop
     animate();
 });
+
+// Create and animate the axis helper
+createAxisHelper(scene);
 
 // Event listeners
 window.addEventListener('resize', () => handleWindowResize(camera, renderer), false);
