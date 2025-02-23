@@ -1,6 +1,8 @@
 import * as THREE from "three";
-import { OrbitControls } from 'jsm/controls/OrbitControls.js';
 import { io } from 'socket.io-client';
+import gsap from "gsap";
+import { initScene, setupLighting, setupControls } from './sceneSetup.js';
+import { createTerrainMesh, updateVertexHeights, loadHeightData } from './terrain.js';
 
 console.log('THREE version:', THREE.REVISION);
 
@@ -20,7 +22,7 @@ socket.on('disconnect', () => {
 const config = {
     chunkSizes: [10, 20, 50, 100, 200, 500, 750, 1000, 1500, 2000],
     chunkSizeIndex: 4,
-    chunkPosition: { x: 200, y: 200 },
+    chunkPosition: { x: 200.0, y: 200.0 },
     scale: { height: 20, plane: 10 },
     mapSize: { width: 10000, height: 10000 },     // to be updated after loading height data
     moveStepScale: 0.25,
@@ -30,110 +32,13 @@ const config = {
 let currentTerrainMesh = null;
 let heightData = null;
 
-// Scene setup functions
-function initScene() {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, width/height, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer();
-    
-    camera.position.set(config.cameraPosition.x, config.cameraPosition.y, config.cameraPosition.z);
-    camera.lookAt(0, 0, 0);
-    renderer.setSize(width, height);
-    document.body.appendChild(renderer.domElement);
-    
-    return { scene, camera, renderer };
-}
-
-function setupLighting(scene) {
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(0, 1, 1);
-    scene.add(light);
-}
-
-function setupControls(camera, renderer) {
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, 0);
-    controls.enableZoom = true;
-    controls.enablePan = true;
-    controls.enableDamping = true;
-    controls.update();
-    return controls;
-}
-
-// Terrain functions
-function createTerrainMesh(geometry) {
-    const material = new THREE.MeshPhongMaterial({
-        color: 0x808080,
-        wireframe: false,
-        side: THREE.DoubleSide
-    });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.rotation.x = -Math.PI / 2;
-    return mesh;
-}
-function updateVertexHeights(geometry) {
-    const vertices = geometry.attributes.position.array;
-    const position = config.chunkPosition;
-    const chunkSize = config.chunkSizes[config.chunkSizeIndex];
-    const totalVertices = chunkSize * chunkSize;
-
-    // Create flat arrays for better performance
-    const heightValues = new Float32Array(totalVertices);
-    
-    // Bulk process height values
-    for (let i = 0; i < totalVertices; i++) {
-        const row = Math.floor(i / chunkSize);
-        const col = i % chunkSize;
-        const dataX = position.x + row;
-        const dataY = position.y + col;
-        
-        const heightValue = heightData[dataX]?.[dataY];
-        heightValues[i] = heightValue !== undefined 
-            ? heightValue * config.scale.height             // If height value exists, scale it
-            : 0;                                            // Default to 0 if not found
-    }
-
-    // Bulk update vertex positions
-    for (let i = 0; i < totalVertices; i++) {
-        vertices[i * 3 + 2] = heightValues[i];
-    }
-
-    geometry.attributes.position.needsUpdate = true;
-    geometry.computeVertexNormals();
-}
-
-async function loadHeightData() {
-    try {
-        const response = await fetch('data/height_cache_H282.bin');
-        const buffer = await response.arrayBuffer();
-        const dataView = new DataView(buffer);
-        const rows = dataView.getUint32(0, true);
-        const cols = dataView.getUint32(4, true);
-        heightData = Array.from({ length: rows }, (_, i) =>
-            Array.from({ length: cols }, (_, j) =>
-                dataView.getFloat32(8 + (i * cols + j) * 4, true)
-            )
-        );
-        config.mapSize.width = rows;
-        config.mapSize.height = cols;
-    } catch (error) {
-        console.error('Error loading height data:', error);
-        heightData = [];
-    }
-}
-
 // Main setup function
 function createHeightMap(scene, controls) {
     const chunkSize = config.chunkSizes[config.chunkSizeIndex];
-    console.log(`Chunk size: ${chunkSize}`);
     const plane = config.scale.plane;
     const geometry = new THREE.PlaneGeometry(plane, plane, chunkSize - 1, chunkSize - 1);
 
-    updateVertexHeights(geometry);
+    updateVertexHeights(geometry, config, heightData);
     const mesh = createTerrainMesh(geometry);
     if (currentTerrainMesh) {
         scene.remove(currentTerrainMesh);
@@ -146,7 +51,7 @@ function createHeightMap(scene, controls) {
 
 function updateChunkLocationDisplay() {
     const chunkLocationElement = document.getElementById('chunk-location');
-    chunkLocationElement.textContent = `Chunk: (${config.chunkPosition.x}, ${config.chunkPosition.y})`;
+    chunkLocationElement.textContent = `Chunk: (${config.chunkPosition.x.toFixed(2)}, ${config.chunkPosition.y.toFixed(2)})`;
 }
 
 function moveChunkPosition(deltaX, deltaY = deltaX) {
@@ -156,8 +61,19 @@ function moveChunkPosition(deltaX, deltaY = deltaX) {
 
 function moveChunk(directionX, directionY) {
     // Update the start position and recreate the height map
-    const stepSize = Math.round(config.moveStepScale * config.chunkSizes[config.chunkSizeIndex]);
-    moveChunkPosition(directionX * stepSize, directionY * stepSize);
+    const stepSize = config.moveStepScale * config.chunkSizes[config.chunkSizeIndex];
+    const targetX = config.chunkPosition.x + directionX * stepSize;
+    const targetY = config.chunkPosition.y + directionY * stepSize;
+
+    gsap.to(config.chunkPosition, {
+        x: targetX,
+        y: targetY,
+        duration: 1,
+        ease: "power4.out",
+        onUpdate: () => {
+            updateDisplay();
+        }
+    });
 }
 
 function handleZoom(direction) {
@@ -175,6 +91,7 @@ function handleZoom(direction) {
     moveChunkPosition(
         oldChunkSize / 2 - newChunkSize / 2
     );
+    console.log(`Chunk size: ${newChunkSize}`);
 }
 
 
@@ -193,7 +110,6 @@ function handleMovement(key) {
     // Handle directional movement
     if (Array.isArray(movement)) {
         moveChunk(...movement);
-        updateDisplay();
         return;
     }
 
@@ -205,8 +121,8 @@ function handleMovement(key) {
 
     // Handle reset operation
     else if (movement === 'reset') {
-        config.chunkPosition.x = 200;
-        config.chunkPosition.y = 200;
+        config.chunkPosition.x = 200.0;
+        config.chunkPosition.y = 200.0;
         config.chunkSizeIndex = 4; // Reset to default chunk size
         updateDisplay();
     }
@@ -224,7 +140,7 @@ function animate() {
 }
 
 // Initialize application
-const { scene, camera, renderer } = initScene();
+const { scene, camera, renderer } = initScene(config);
 const controls = setupControls(camera, renderer);
 setupLighting(scene);
 
@@ -233,7 +149,10 @@ const loadingOverlay = document.getElementById('loading-overlay');
 loadingOverlay.style.display = 'flex';
 
 // Load height data and start application
-loadHeightData().then(() => {
+loadHeightData('data/height_cache_H282.bin').then(({ heightData: data, rows, cols }) => {
+    heightData = data;
+    config.mapSize.width = rows;
+    config.mapSize.height = cols;
     createHeightMap(scene, controls);
     updateChunkLocationDisplay();
     // Hide loading overlay
