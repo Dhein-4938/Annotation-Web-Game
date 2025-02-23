@@ -108,10 +108,18 @@ function updateVertexHeights(geometry) {
 
 async function loadHeightData() {
     try {
-        const response = await fetch('data/height_cache_H282.json');
-        heightData = await response.json();
-        config.mapSize.width = heightData.length;
-        config.mapSize.height = heightData[0].length;
+        const response = await fetch('data/height_cache_H282.bin');
+        const buffer = await response.arrayBuffer();
+        const dataView = new DataView(buffer);
+        const rows = dataView.getUint32(0, true);
+        const cols = dataView.getUint32(4, true);
+        heightData = Array.from({ length: rows }, (_, i) =>
+            Array.from({ length: cols }, (_, j) =>
+                dataView.getFloat32(8 + (i * cols + j) * 4, true)
+            )
+        );
+        config.mapSize.width = rows;
+        config.mapSize.height = cols;
     } catch (error) {
         console.error('Error loading height data:', error);
         heightData = [];
@@ -266,4 +274,3 @@ buttonIds.forEach(direction => {
         moveChunk(...movement);
     });
 });
-

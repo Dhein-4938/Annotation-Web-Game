@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import fs from 'fs';
 
 const app = express();
 const server = createServer(app);
@@ -44,6 +45,21 @@ io.on('connection', (socket) => {
         delete clients[clientId];
         console.log(`Current clients: ${Object.keys(clients).length}`);
     });
+});
+
+// Serve binary files
+app.get('/data/height_cache_WASS316L.bin', (req, res) => {
+    const filePath = join(__dirname, 'public', 'data', 'height_cache_WASS316L.bin');
+    const readStream = fs.createReadStream(filePath);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    readStream.pipe(res);
+});
+
+app.get('/data/height_cache_H282.bin', (req, res) => {
+    const filePath = join(__dirname, 'public', 'data', 'height_cache_H282.bin');
+    const readStream = fs.createReadStream(filePath);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    readStream.pipe(res);
 });
 
 const PORT = process.env.PORT || 3000;
