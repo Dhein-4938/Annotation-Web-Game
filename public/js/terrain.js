@@ -98,7 +98,6 @@ export function generateTerrainChunks(config, heightData, gridProperties=null) {
 }
 
 export function createTerrainForPosition(config, heightData, properties) {
-    // console.log(properties);
     const chunkSize = config.chunkSizes[config.chunkSizeIndex];
     const plane = config.scale.plane;
     const geometry = createTerrainGeometry(config);
