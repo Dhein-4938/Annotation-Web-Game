@@ -1,4 +1,5 @@
 import { moveChunk, handleZoom, updateChunkLocationDisplay } from './movement.js';
+import { generateTerrainChunks } from './terrain.js';
 
 const MOVEMENTS = {
     'ArrowUp':    [0,  1],
@@ -45,6 +46,9 @@ export function handleMovement(config, data, scene, key) {
         data.chunkPosition.y = 200.0;
         data.chunkSizeIndex = 4; // Reset to default chunk size
         updateChunkLocationDisplay(data);
+        data.gridChunk.forEach(chunk => scene.remove(chunk.mesh));
+        data.gridChunk = generateTerrainChunks(config, data);
+        data.gridChunk.forEach(chunk => scene.add(chunk.mesh));
     }
 }
 

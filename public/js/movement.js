@@ -33,13 +33,13 @@ function updateChunkIds(config, data, directions) {
 }
 
 // Animates and removes old chunks from the scene
-function animateAndRemoveOldChunks(data, scene, oldChunk) {
+function animateAndRemoveOldChunks(config, data, scene, oldChunk) {
     oldChunk.forEach(chunk => {
         const mesh = chunk.mesh;
         data.gridChunk.splice(data.gridChunk.indexOf(chunk), 1);
-        gsap.to(mesh.position, { duration: 1, y: -10 });
+        gsap.to(mesh.position, { duration: config.animationDuration / 1000, y: -10 });
         gsap.to(mesh.material, { 
-            duration: 1, 
+            duration: config.animationDuration / 1000, 
             opacity: 0,
             ease: "power4.out",
             onComplete: () => scene.remove(mesh)
@@ -70,8 +70,8 @@ function createAndAnimateNewChunks(scene, config, data, parameters) {
         scene.add(mesh);
         data.gridChunk.push(chunk);
 
-        gsap.to(mesh.position, { duration: 1, y: 0, ease: "power4.out" });
-        gsap.to(mesh.material, { duration: 1, opacity: config.opacity.other, ease: "power4.out" });
+        gsap.to(mesh.position, { duration: config.animationDuration / 1000, y: 0, ease: "power4.out" });
+        gsap.to(mesh.material, { duration: config.animationDuration / 1000, opacity: config.opacity.other, ease: "power4.out" });
     });
 
     return newChunks;
@@ -88,7 +88,7 @@ function updateRemainingChunksPositions(config, data, oldChunk, newChunks, direc
     remainingChunks.forEach(chunk => {
         const mesh = chunk.mesh;
         gsap.to(mesh.position, {
-            duration: 1,
+            duration: config.animationDuration / 1000,
             x: mesh.position.x - directionY * meshStepSize,
             z: mesh.position.z - directionX * meshStepSize,
             ease: "power4.out"
@@ -103,7 +103,7 @@ export function moveChunk(scene, config, data, directionX, directionY) {
     
     adjustChunkPosition(data, directions, chunkSize);
     const oldChunk = updateChunkIds(config, data, directions);
-    animateAndRemoveOldChunks(data, scene, oldChunk);
+    animateAndRemoveOldChunks(config, data, scene, oldChunk);
 
     const parameters = generateNewChunkParameters(directions);
     const newChunks = createAndAnimateNewChunks(scene, config, data, parameters);
