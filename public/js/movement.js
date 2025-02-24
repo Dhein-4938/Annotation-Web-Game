@@ -33,11 +33,10 @@ function updateChunkIds(config, data, directions) {
 }
 
 // Animates and removes old chunks from the scene
-function animateAndRemoveOldChunks(config, data, scene, oldChunk) {
+function fadeOutOldChunks(config, data, scene, oldChunk) {
     oldChunk.forEach(chunk => {
         const mesh = chunk.mesh;
         data.gridChunk.splice(data.gridChunk.indexOf(chunk), 1);
-        gsap.to(mesh.position, { duration: config.animationDuration / 1000, y: -10 });
         gsap.to(mesh.material, { 
             duration: config.animationDuration / 1000, 
             opacity: 0,
@@ -58,34 +57,36 @@ function generateNewChunkParameters(directions) {
 }
 
 // Creates and animates new chunks in the scene
-function createAndAnimateNewChunks(scene, config, data, parameters) {
+function fadeInNewChunks(scene, config, data, directions) {
+    const { directionX, directionY } = directions;
+    const meshStepSize = config.scale.plane;
+    const parameters = generateNewChunkParameters(directions);
+    
     const newChunks = parameters.map(({ gridX, gridY, id }) => 
         createTerrainForPosition(config, data, { gridX, gridY, opacity: config.opacity.other, id })
     );
 
     newChunks.forEach(chunk => {
         const mesh = chunk.mesh;
-        mesh.position.y = -10;
         mesh.material.opacity = 0;
+        // Shift the mesh towards the direction to compensate for the movement
+        mesh.position.x += directionY * meshStepSize,
+        mesh.position.z += directionX * meshStepSize,
         scene.add(mesh);
         data.gridChunk.push(chunk);
-
-        gsap.to(mesh.position, { duration: config.animationDuration / 1000, y: 0, ease: "power4.out" });
-        gsap.to(mesh.material, { duration: config.animationDuration / 1000, opacity: config.opacity.other, ease: "power4.out" });
+        gsap.to(mesh.material, { 
+            duration: config.animationDuration / 1000, 
+            opacity: config.opacity.other, 
+            ease: "power1.out" });
     });
-
-    return newChunks;
 }
 
 // Updates positions of remaining chunks after movement
-function updateRemainingChunksPositions(config, data, oldChunk, newChunks, directions) {
+function animateGridChunks(config, data, directions) {
     const { directionX, directionY } = directions;
     const meshStepSize = config.scale.plane;
-    const remainingChunks = data.gridChunk.filter(chunk => 
-        !oldChunk.includes(chunk) && !newChunks.includes(chunk)
-    );
 
-    remainingChunks.forEach(chunk => {
+    data.gridChunk.forEach(chunk => {
         const mesh = chunk.mesh;
         gsap.to(mesh.position, {
             duration: config.animationDuration / 1000,
@@ -103,12 +104,11 @@ export function moveChunk(scene, config, data, directionX, directionY) {
     
     adjustChunkPosition(data, directions, chunkSize);
     const oldChunk = updateChunkIds(config, data, directions);
-    animateAndRemoveOldChunks(config, data, scene, oldChunk);
 
-    const parameters = generateNewChunkParameters(directions);
-    const newChunks = createAndAnimateNewChunks(scene, config, data, parameters);
-
-    updateRemainingChunksPositions(config, data, oldChunk, newChunks, directions);
+    fadeInNewChunks(scene, config, data, directions);
+    
+    animateGridChunks(config, data, directions);
+    fadeOutOldChunks(config, data, scene, oldChunk);
 }
 
 // Handles zooming in and out by updating chunk size

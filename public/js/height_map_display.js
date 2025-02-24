@@ -21,7 +21,7 @@ const config = {
     moveStepScale: 0.25,
     cameraPosition: { x: -5, y: 5, z: 0 },
     opacity: { center: 1.0, other: 0.3 },
-    animationDuration: 500, // Animation duration in milliseconds
+    animationDuration: 300, // Animation duration in milliseconds
 };
 
 const data = {
