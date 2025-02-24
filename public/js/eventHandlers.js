@@ -15,6 +15,14 @@ const MOVEMENTS = {
     'r':          'reset',
 };
 
+let isCooldown = false;
+
+function startCooldown(duration) {
+    isCooldown = true;
+    setTimeout(() => {
+        isCooldown = false;
+    }, duration);
+}
 
 export function handleWindowResize(camera, renderer) {
     const width = window.innerWidth;
@@ -25,19 +33,23 @@ export function handleWindowResize(camera, renderer) {
 }
 
 export function handleMovement(config, data, scene, key) {
+    if (isCooldown) return;
+
     const movement = MOVEMENTS[key];
     
     // Handle directional movement
     if (Array.isArray(movement)) {
         moveChunk(scene, config, data, ...movement);
         updateChunkLocationDisplay(data);
+        startCooldown(config.animationDuration);
         return;
     }
 
     // Handle zoom operations
     else if (movement === 'zoomIn' || movement === 'zoomOut') {
-        handleZoom(config, data, movement === 'zoomIn' ? -1 : 1);
+        handleZoom(config, data, scene, movement === 'zoomIn' ? -1 : 1);
         updateChunkLocationDisplay(data);
+        startCooldown(config.animationDuration);
     }
 
     // Handle reset operation
@@ -49,12 +61,16 @@ export function handleMovement(config, data, scene, key) {
         data.gridChunk.forEach(chunk => scene.remove(chunk.mesh));
         data.gridChunk = generateTerrainChunks(config, data);
         data.gridChunk.forEach(chunk => scene.add(chunk.mesh));
+        startCooldown(config.animationDuration);
     }
 }
 
 // Handle button movement
 export function handleButtonMovement(direction, scene, config, data) {
+    if (isCooldown) return;
+
     const movement = MOVEMENTS[`Arrow${direction.charAt(0).toUpperCase() + direction.slice(1)}`];
     moveChunk(scene, config, data, ...movement);
     updateChunkLocationDisplay(data);
+    startCooldown(config.animationDuration);
 }

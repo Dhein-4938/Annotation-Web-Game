@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import gsap from "gsap";
-import { createTerrainForPosition } from './terrain.js';
+import { createTerrainForPosition, generateTerrainChunks } from './terrain.js';
 
 // Updates the display of the current chunk location
 export function updateChunkLocationDisplay(data) {
@@ -112,7 +112,7 @@ export function moveChunk(scene, config, data, directionX, directionY) {
 }
 
 // Handles zooming in and out by updating chunk size
-export function handleZoom(config, data, zoomIncrement) {
+export function handleZoom(config, data, scene, zoomIncrement) {
     const oldChunkSize = config.chunkSizes[data.chunkSizeIndex];
     
     data.chunkSizeIndex = THREE.MathUtils.clamp(
@@ -122,6 +122,12 @@ export function handleZoom(config, data, zoomIncrement) {
     );
     
     const newChunkSize = config.chunkSizes[data.chunkSizeIndex];
-    adjustChunkPosition(data, {X: 1, Y: 1}, oldChunkSize / 2 - newChunkSize / 2);
+    data.chunkPosition.x += (oldChunkSize - newChunkSize) / 2;
+    data.chunkPosition.y += (oldChunkSize - newChunkSize) / 2;
+
+    data.gridChunk.forEach(chunk => scene.remove(chunk.mesh));
+    data.gridChunk = generateTerrainChunks(config, data);
+    data.gridChunk.forEach(chunk => scene.add(chunk.mesh));
+    updateChunkLocationDisplay(data);
     console.log(`Chunk size: ${newChunkSize}`);
 }
