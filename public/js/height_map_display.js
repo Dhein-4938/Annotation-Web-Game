@@ -11,13 +11,8 @@ console.log('THREE version:', THREE.REVISION);
 const socket = io();
 
 // Log connection status
-socket.on('connect', () => {
-    console.log('Connected to server');
-});
-
-socket.on('disconnect', () => {
-    console.log('Disconnected from server');
-});
+socket.on('connect', () => { console.log('Connected to server'); });
+socket.on('disconnect', () => { console.log('Disconnected from server'); });
 
 // Configuration
 const config = {
@@ -28,9 +23,11 @@ const config = {
     scale: { height: 20, plane: 10 },
     mapSize: { width: 10000, height: 10000 },     // to be updated after loading height data
     moveStepScale: 0.25,
-    cameraPosition: { x: -5, y: 5, z: 0 }
+    cameraPosition: { x: -5, y: 5, z: 0 },
+    opacity: { center: 1.0, other: 0.3 },
 };
-const mesh3x3 = [];
+
+let gridChunk = [];
 let heightData = null;
 
 function updateChunkLocationDisplay() {
@@ -43,17 +40,6 @@ function updateConfigChunkPosition(dx, dy = dx) {
     config.chunkPosition.y = THREE.MathUtils.clamp(config.chunkPosition.y + dy, 0, config.mapSize.height);    
 }
 
-function highlightCenterChunk() {
-    mesh3x3.forEach(chunk => {
-        if (chunk.position.x === config.chunkPosition.x &&
-            chunk.position.z === config.chunkPosition.y) {
-            chunk.material.opacity = 1;
-        } else {
-            chunk.material.opacity = 0.3;
-        }
-    });
-}
-
 function moveChunk(directionX, directionY = directionX) {
     const { meshStepSize, chunkSize } = {
         meshStepSize: config.scale.plane,
@@ -62,71 +48,66 @@ function moveChunk(directionX, directionY = directionX) {
     
     // Move chunk position
     updateConfigChunkPosition(directionX * chunkSize, directionY * chunkSize);
-    
-    // Identify chunks to remove based on movement direction
-    const oldChunks = mesh3x3.filter(chunk => {
-        if (directionX > 0) return chunk.position.z <= -meshStepSize;
-        if (directionX < 0) return chunk.position.z >= meshStepSize;
-        if (directionY > 0) return chunk.position.x <= -meshStepSize;
-        if (directionY < 0) return chunk.position.x >= meshStepSize;
-        return false;
+
+    const oldChunk = []
+
+    // Update chunk id
+    gridChunk.forEach(chunk => {
+        if (chunk.id === 11)  chunk.mesh.material.opacity = config.opacity.other;
+        chunk.id = chunk.id - directionX - directionY * 10;
+        if (chunk.id === 11)  chunk.mesh.material.opacity = config.opacity.center;
+        if (![0,1,2,10,11,12,20,21,22].includes(chunk.id)) {
+            oldChunk.push(chunk);
+        }
     });
 
     // Animate and remove old chunks
-    oldChunks.forEach(chunk => {
-        gsap.to(chunk.position, { duration: 1, y: -10, ease: "power4.out" });
-        gsap.to(chunk.material, {
-            duration: 1,
+    oldChunk.forEach(chunk => {
+        gridChunk = gridChunk.filter(item => item !== chunk);
+        gsap.to(chunk.mesh.position, { duration: 1, y: -10 });
+        gsap.to(chunk.mesh.material, { 
+            duration: 1, 
             opacity: 0,
             ease: "power4.out",
-            onComplete: () => {
-                scene.remove(chunk);
-                mesh3x3 = mesh3x3.filter(m => m !== chunk);
-            }
+            onComplete: () => scene.remove(chunk.mesh)
         });
     });
 
-    // Generate new chunk positions based on the xy directions
-    const positions = [
-        { x: directionX > 0 ? 1 : directionX < 0 ? -1 : -1, 
-          z: directionY > 0 ? 1 : directionY < 0 ? -1 : -1 },
-        { x: directionX > 0 ? 1 : directionX < 0 ? -1 : 0, 
-          z: directionY > 0 ? 1 : directionY < 0 ? -1 : 0 },
-        { x: directionX > 0 ? 1 : directionX < 0 ? -1 : 1, 
-          z: directionY > 0 ? 1 : directionY < 0 ? -1 : 1 }
-    ];
+    // Generate parameters for new chunks based on movement direction
+    const parameters = [0, 1, 2].map(offset => ({
+        gridX: directionX !== 0 ? directionX : offset - 1,
+        gridY: directionX !== 0 ? offset - 1 : directionY,
+        id: directionX !== 0 ? directionX + 1 + offset*10 : directionY*10 + 10 + offset
+    }));
 
 
-    // Create new chunks only for positions that don't exist yet
-    const newChunks = positions
-        .map(pos => createTerrainForPosition(
-            config, 
-            heightData, 
-            {gridX: pos.x, gridY: pos.z}, 
-            0.3
-        ))
-
+    const newChunks = parameters.map(({ gridX, gridY, id }) => 
+        createTerrainForPosition(config, heightData, { gridX, gridY, opacity: config.opacity.other, id })
+    );
     // Add and animate new chunks
-    newChunks.forEach(chunk => {
-        chunk.position.y = -10;
-        chunk.material.opacity = 0;
-        scene.add(chunk);
-        mesh3x3.push(chunk);
 
-        gsap.to(chunk.position, { duration: 1, y: 0, ease: "power4.out" });
-        gsap.to(chunk.material, { duration: 1, opacity: 1, ease: "power4.out" });
+    newChunks.forEach(chunk => {
+        const mesh = chunk.mesh;
+        mesh.position.y = -10;
+        mesh.material.opacity = 0;
+        scene.add(mesh);
+        gridChunk.push(chunk);
+
+        gsap.to(mesh.position, { duration: 1, y: 0, ease: "power4.out" });
+        gsap.to(mesh.material, { duration: 1, opacity: config.opacity.other, ease: "power4.out" });
     });
 
     // Update remaining chunks positions
-    const remainingChunks = mesh3x3.filter(chunk => 
-        !oldChunks.includes(chunk) && !newChunks.includes(chunk)
+    const remainingChunks = gridChunk.filter(chunk => 
+        !oldChunk.includes(chunk) && !newChunks.includes(chunk)
     );
 
     remainingChunks.forEach(chunk => {
-        gsap.to(chunk.position, {
+        const mesh = chunk.mesh;
+        gsap.to(mesh.position, {
             duration: 1,
-            x: chunk.position.x - directionY * meshStepSize,
-            z: chunk.position.z - directionX * meshStepSize,
+            x: mesh.position.x - directionY * meshStepSize,
+            z: mesh.position.z - directionX * meshStepSize,
             ease: "power4.out"
         });
     });
@@ -212,9 +193,9 @@ loadHeightData('data/height_cache_H282.bin').then(({ heightData: data, rows, col
     config.mapSize.width = rows;
     config.mapSize.height = cols;
     
-    mesh3x3.forEach(chunk => scene.remove(chunk));
-    mesh3x3 = generateTerrainChunks(config, heightData);
-    mesh3x3.forEach(chunk => scene.add(chunk));
+    gridChunk.forEach(chunk => scene.remove(chunk.mesh));
+    gridChunk = generateTerrainChunks(config, heightData);
+    gridChunk.forEach(chunk => scene.add(chunk.mesh));
     controls.update();
     updateChunkLocationDisplay();
     // Hide loading overlay

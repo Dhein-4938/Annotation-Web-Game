@@ -75,40 +75,41 @@ export function createTerrainGeometry(config, rows=1, cols=1) {
 }
 
 export function generateTerrainChunks(config, heightData, gridProperties=null) {
+    const otherOpacity = config.opacity.other;
+    const centerOpacity = config.opacity.center;
     const properties = gridProperties 
         ? [{ gridX: gridProperties.x, 
              gridY: gridProperties.y, 
-             opacity: gridProperties.opacity }]
+             opacity: gridProperties.opacity,
+             id: gridProperties.id }]
         : [
-            { gridX:-1, gridY:-1, opacity: 0.3}, { gridX:-1, gridY: 0, opacity: 0.3 }, { gridX:-1, gridY: 1, opacity: 0.3 },
-            { gridX: 0, gridY:-1, opacity: 0.3}, { gridX: 0, gridY: 0, opacity: 1.0 }, { gridX: 0, gridY: 1, opacity: 0.3 },
-            { gridX: 1, gridY:-1, opacity: 0.3}, { gridX: 1, gridY: 0, opacity: 0.3 }, { gridX: 1, gridY: 1, opacity: 0.3 }
+            { gridX:-1, gridY: 1, opacity: otherOpacity, id:20 }, { gridX: 0, gridY: 1, opacity:  otherOpacity, id:21 }, { gridX: 1, gridY: 1, opacity: otherOpacity, id:22 },
+            { gridX:-1, gridY: 0, opacity: otherOpacity, id:10 }, { gridX: 0, gridY: 0, opacity: centerOpacity, id:11 }, { gridX: 1, gridY: 0, opacity: otherOpacity, id:12 },
+            { gridX:-1, gridY:-1, opacity: otherOpacity, id: 0 }, { gridX: 0, gridY:-1, opacity:  otherOpacity, id: 1 }, { gridX: 1, gridY:-1, opacity: otherOpacity, id: 2 }
           ];
     
     return properties.map(prop => {
         return createTerrainForPosition(
             config, 
             heightData, 
-            { gridX: prop.gridX, gridY: prop.gridY }, 
-            prop.opacity
+            { gridX: prop.gridX, gridY: prop.gridY, opacity: prop.opacity , id: prop.id }
         );
     });
 }
 
-export function createTerrainForPosition(config, heightData, position, opacity = 0.3) {
+export function createTerrainForPosition(config, heightData, properties) {
+    // console.log(properties);
     const chunkSize = config.chunkSizes[config.chunkSizeIndex];
+    const plane = config.scale.plane;
     const geometry = createTerrainGeometry(config);
+    const {gridX, gridY, opacity, id} = properties;
     
     updateGeometryHeights(geometry, config, heightData, {
-        x: config.chunkPosition.x + position.gridX * chunkSize,
-        y: config.chunkPosition.y + position.gridY * chunkSize
+        x: config.chunkPosition.x + gridX * chunkSize,
+        y: config.chunkPosition.y + gridY * chunkSize
     });
     
     const mesh = createTerrainMesh(geometry, opacity);
-    mesh.position.set(
-        position.gridY * config.scale.plane,
-        0,
-        position.gridX * config.scale.plane
-    );
-    return mesh;
+    mesh.position.set( gridY * plane, 0, gridX * plane );
+    return { mesh: mesh, id: id };
 }
