@@ -99,7 +99,7 @@ function updateRemainingChunksPositions(config, data, oldChunk, newChunks, direc
 // Moves chunks in the scene based on direction
 export function moveChunk(scene, config, data, directionX, directionY) {
     const directions = { directionX, directionY }; // Ensure correct keys
-    const chunkSize = config.chunkSizes[config.chunkSizeIndex];
+    const chunkSize = config.chunkSizes[data.chunkSizeIndex];
     
     adjustChunkPosition(data, directions, chunkSize);
     const oldChunk = updateChunkIds(config, data, directions);
@@ -113,15 +113,15 @@ export function moveChunk(scene, config, data, directionX, directionY) {
 
 // Handles zooming in and out by updating chunk size
 export function handleZoom(config, data, zoomIncrement) {
-    const oldChunkSize = config.chunkSizes[config.chunkSizeIndex];
+    const oldChunkSize = config.chunkSizes[data.chunkSizeIndex];
     
-    config.chunkSizeIndex = THREE.MathUtils.clamp(
-        config.chunkSizeIndex + zoomIncrement,
+    data.chunkSizeIndex = THREE.MathUtils.clamp(
+        data.chunkSizeIndex + zoomIncrement,
         0,
         config.chunkSizes.length - 1
     );
     
-    const newChunkSize = config.chunkSizes[config.chunkSizeIndex];
+    const newChunkSize = config.chunkSizes[data.chunkSizeIndex];
     adjustChunkPosition(data, {X: 1, Y: 1}, oldChunkSize / 2 - newChunkSize / 2);
     console.log(`Chunk size: ${newChunkSize}`);
 }

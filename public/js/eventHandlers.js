@@ -43,7 +43,7 @@ export function handleMovement(config, data, scene, key) {
     else if (movement === 'reset') {
         data.chunkPosition.x = 200.0;
         data.chunkPosition.y = 200.0;
-        config.chunkSizeIndex = 4; // Reset to default chunk size
+        data.chunkSizeIndex = 4; // Reset to default chunk size
         updateChunkLocationDisplay(data);
     }
 }

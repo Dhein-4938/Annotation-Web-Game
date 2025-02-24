@@ -16,7 +16,7 @@ export function createTerrainMesh(geometry, opacity = 1) {
 
 export function updateGeometryHeights(geometry, config, data, position) {
     const vertices = geometry.attributes.position.array;
-    const chunkSize = config.chunkSizes[config.chunkSizeIndex];
+    const chunkSize = config.chunkSizes[data.chunkSizeIndex];
     const totalVertices = chunkSize * chunkSize;
     const heightData = data.heightData;
 
@@ -64,8 +64,8 @@ export async function loadHeightData(url) {
     }
 }
 
-export function createTerrainGeometry(config, rows=1, cols=1) {
-    const chunkSize = config.chunkSizes[config.chunkSizeIndex];
+export function createTerrainGeometry(config, data, rows=1, cols=1) {
+    const chunkSize = config.chunkSizes[data.chunkSizeIndex];
     const geometry = new THREE.PlaneGeometry(
         config.scale.plane * rows, 
         config.scale.plane * cols, 
@@ -99,9 +99,9 @@ export function generateTerrainChunks(config, data, gridProperties=null) {
 }
 
 export function createTerrainForPosition(config, data, properties) {
-    const chunkSize = config.chunkSizes[config.chunkSizeIndex];
+    const chunkSize = config.chunkSizes[data.chunkSizeIndex];
     const plane = config.scale.plane;
-    const geometry = createTerrainGeometry(config);
+    const geometry = createTerrainGeometry(config, data);
     const {gridX, gridY, opacity, id} = properties;
     
     updateGeometryHeights(geometry, config, data, {

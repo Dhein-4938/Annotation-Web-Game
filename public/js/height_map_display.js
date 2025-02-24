@@ -17,7 +17,6 @@ socket.on('disconnect', () => { console.log('Disconnected from server'); });
 // Configuration
 const config = {
     chunkSizes: [10, 20, 50, 100, 200, 500, 750, 1000, 1500],
-    chunkSizeIndex: 4,
     scale: { height: 20, plane: 10 },
     moveStepScale: 0.25,
     cameraPosition: { x: -5, y: 5, z: 0 },
@@ -31,6 +30,7 @@ const data = {
     gridChunk: [],
     chunkPosition: { x: 200.0, y: 200.0 },
     meshPosition: { x: 0, y: 0 , z: 0 },
+    chunkSizeIndex: 4,
 };
 
 function animate() {
