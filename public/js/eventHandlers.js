@@ -23,36 +23,34 @@ export function handleWindowResize(camera, renderer) {
     renderer.setSize(width, height);
 }
 
-export function handleMovement(key, scene, config, heightData, gridChunk) {
+export function handleMovement(config, data, scene, key) {
     const movement = MOVEMENTS[key];
     
     // Handle directional movement
     if (Array.isArray(movement)) {
-        console.log('gridChunk ids:', gridChunk.map(chunk => chunk.id));
-        moveChunk(scene, config, heightData, gridChunk, ...movement);
-        console.log('gridChunk ids:', gridChunk.map(chunk => chunk.id));
-        updateChunkLocationDisplay(config);
+        moveChunk(scene, config, data, ...movement);
+        updateChunkLocationDisplay(data);
         return;
     }
 
     // Handle zoom operations
     else if (movement === 'zoomIn' || movement === 'zoomOut') {
-        handleZoom(config, movement === 'zoomIn' ? -1 : 1);
-        updateChunkLocationDisplay(config);
+        handleZoom(config, data, movement === 'zoomIn' ? -1 : 1);
+        updateChunkLocationDisplay(data);
     }
 
     // Handle reset operation
     else if (movement === 'reset') {
-        config.chunkPosition.x = 200.0;
-        config.chunkPosition.y = 200.0;
+        data.chunkPosition.x = 200.0;
+        data.chunkPosition.y = 200.0;
         config.chunkSizeIndex = 4; // Reset to default chunk size
-        updateChunkLocationDisplay(config);
+        updateChunkLocationDisplay(data);
     }
 }
 
 // Handle button movement
-export function handleButtonMovement(direction, scene, config, heightData, gridChunk) {
+export function handleButtonMovement(direction, scene, config, data) {
     const movement = MOVEMENTS[`Arrow${direction.charAt(0).toUpperCase() + direction.slice(1)}`];
-    moveChunk(scene, config, heightData, gridChunk, ...movement);
-    updateChunkLocationDisplay(config);
+    moveChunk(scene, config, data, ...movement);
+    updateChunkLocationDisplay(data);
 }

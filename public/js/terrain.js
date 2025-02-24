@@ -14,10 +14,11 @@ export function createTerrainMesh(geometry, opacity = 1) {
     return mesh;
 }
 
-export function updateGeometryHeights(geometry, config, heightData, position) {
+export function updateGeometryHeights(geometry, config, data, position) {
     const vertices = geometry.attributes.position.array;
     const chunkSize = config.chunkSizes[config.chunkSizeIndex];
     const totalVertices = chunkSize * chunkSize;
+    const heightData = data.heightData;
 
     // Create flat arrays for better performance
     const heightValues = new Float32Array(totalVertices);
@@ -74,7 +75,7 @@ export function createTerrainGeometry(config, rows=1, cols=1) {
     return geometry;
 }
 
-export function generateTerrainChunks(config, heightData, gridProperties=null) {
+export function generateTerrainChunks(config, data, gridProperties=null) {
     const otherOpacity = config.opacity.other;
     const centerOpacity = config.opacity.center;
     const properties = gridProperties 
@@ -91,21 +92,21 @@ export function generateTerrainChunks(config, heightData, gridProperties=null) {
     return properties.map(prop => {
         return createTerrainForPosition(
             config, 
-            heightData, 
+            data, 
             { gridX: prop.gridX, gridY: prop.gridY, opacity: prop.opacity , id: prop.id }
         );
     });
 }
 
-export function createTerrainForPosition(config, heightData, properties) {
+export function createTerrainForPosition(config, data, properties) {
     const chunkSize = config.chunkSizes[config.chunkSizeIndex];
     const plane = config.scale.plane;
     const geometry = createTerrainGeometry(config);
     const {gridX, gridY, opacity, id} = properties;
     
-    updateGeometryHeights(geometry, config, heightData, {
-        x: config.chunkPosition.x + gridX * chunkSize,
-        y: config.chunkPosition.y + gridY * chunkSize
+    updateGeometryHeights(geometry, config, data, {
+        x: data.chunkPosition.x + gridX * chunkSize,
+        y: data.chunkPosition.y + gridY * chunkSize
     });
     
     const mesh = createTerrainMesh(geometry, opacity);

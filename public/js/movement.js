@@ -3,21 +3,25 @@ import gsap from "gsap";
 import { createTerrainForPosition } from './terrain.js';
 
 // Updates the display of the current chunk location
-export function updateChunkLocationDisplay(config) {
+export function updateChunkLocationDisplay(data) {
     const chunkLocationElement = document.getElementById('chunk-location');
-    chunkLocationElement.textContent = `Chunk: (${config.chunkPosition.x.toFixed(2)}, ${config.chunkPosition.y.toFixed(2)})`;
+    chunkLocationElement.textContent = `Chunk: (${data.chunkPosition.x.toFixed(2)}, ${data.chunkPosition.y.toFixed(2)})`;
 }
 
 // Updates the chunk position in the configuration
-function updateConfigChunkPosition(config, dx, dy = dx) {
-    config.chunkPosition.x = THREE.MathUtils.clamp(config.chunkPosition.x + dx, 0, config.mapSize.width);
-    config.chunkPosition.y = THREE.MathUtils.clamp(config.chunkPosition.y + dy, 0, config.mapSize.height);    
+function adjustChunkPosition(data, directions, stepSize) {
+    const { directionX, directionY } = directions;
+    const dx = directionX * stepSize;
+    const dy = directionY * stepSize;
+    data.chunkPosition.x = THREE.MathUtils.clamp(data.chunkPosition.x + dx, 0, data.mapSize.width);
+    data.chunkPosition.y = THREE.MathUtils.clamp(data.chunkPosition.y + dy, 0, data.mapSize.height);    
 }
 
 // Updates the chunk IDs based on movement direction and returns old chunks
-function updateChunkIds(gridChunk, directionX, directionY, config) {
+function updateChunkIds(config, data, directions) {
+    const { directionX, directionY } = directions;
     const oldChunk = [];
-    gridChunk.forEach(chunk => {
+    data.gridChunk.forEach(chunk => {
         if (chunk.id === 11) chunk.mesh.material.opacity = config.opacity.other;
         chunk.id = chunk.id - directionX - directionY * 10;
         if (chunk.id === 11) chunk.mesh.material.opacity = config.opacity.center;
@@ -29,10 +33,10 @@ function updateChunkIds(gridChunk, directionX, directionY, config) {
 }
 
 // Animates and removes old chunks from the scene
-function animateAndRemoveOldChunks(scene, oldChunk, gridChunk) {
+function animateAndRemoveOldChunks(data, scene, oldChunk) {
     oldChunk.forEach(chunk => {
         const mesh = chunk.mesh;
-        gridChunk.splice(gridChunk.indexOf(chunk), 1);
+        data.gridChunk.splice(data.gridChunk.indexOf(chunk), 1);
         gsap.to(mesh.position, { duration: 1, y: -10 });
         gsap.to(mesh.material, { 
             duration: 1, 
@@ -44,7 +48,8 @@ function animateAndRemoveOldChunks(scene, oldChunk, gridChunk) {
 }
 
 // Generates parameters for new chunks based on movement direction
-function generateNewChunkParameters(directionX, directionY) {
+function generateNewChunkParameters(directions) {
+    const { directionX, directionY } = directions;
     return [0, 1, 2].map(offset => ({
         gridX: directionX !== 0 ? directionX : offset - 1,
         gridY: directionX !== 0 ? offset - 1 : directionY,
@@ -53,9 +58,9 @@ function generateNewChunkParameters(directionX, directionY) {
 }
 
 // Creates and animates new chunks in the scene
-function createAndAnimateNewChunks(scene, config, heightData, parameters, gridChunk) {
+function createAndAnimateNewChunks(scene, config, data, parameters) {
     const newChunks = parameters.map(({ gridX, gridY, id }) => 
-        createTerrainForPosition(config, heightData, { gridX, gridY, opacity: config.opacity.other, id })
+        createTerrainForPosition(config, data, { gridX, gridY, opacity: config.opacity.other, id })
     );
 
     newChunks.forEach(chunk => {
@@ -63,7 +68,7 @@ function createAndAnimateNewChunks(scene, config, heightData, parameters, gridCh
         mesh.position.y = -10;
         mesh.material.opacity = 0;
         scene.add(mesh);
-        gridChunk.push(chunk);
+        data.gridChunk.push(chunk);
 
         gsap.to(mesh.position, { duration: 1, y: 0, ease: "power4.out" });
         gsap.to(mesh.material, { duration: 1, opacity: config.opacity.other, ease: "power4.out" });
@@ -73,8 +78,10 @@ function createAndAnimateNewChunks(scene, config, heightData, parameters, gridCh
 }
 
 // Updates positions of remaining chunks after movement
-function updateRemainingChunksPositions(gridChunk, oldChunk, newChunks, directionX, directionY, meshStepSize) {
-    const remainingChunks = gridChunk.filter(chunk => 
+function updateRemainingChunksPositions(config, data, oldChunk, newChunks, directions) {
+    const { directionX, directionY } = directions;
+    const meshStepSize = config.scale.plane;
+    const remainingChunks = data.gridChunk.filter(chunk => 
         !oldChunk.includes(chunk) && !newChunks.includes(chunk)
     );
 
@@ -90,34 +97,31 @@ function updateRemainingChunksPositions(gridChunk, oldChunk, newChunks, directio
 }
 
 // Moves chunks in the scene based on direction
-export function moveChunk(scene, config, heightData, gridChunk, directionX, directionY = directionX) {
-    const { meshStepSize, chunkSize } = {
-        meshStepSize: config.scale.plane,
-        chunkSize: config.chunkSizes[config.chunkSizeIndex]
-    };
+export function moveChunk(scene, config, data, directionX, directionY) {
+    const directions = { directionX, directionY }; // Ensure correct keys
+    const chunkSize = config.chunkSizes[config.chunkSizeIndex];
     
-    updateConfigChunkPosition(config, directionX * chunkSize, directionY * chunkSize);
+    adjustChunkPosition(data, directions, chunkSize);
+    const oldChunk = updateChunkIds(config, data, directions);
+    animateAndRemoveOldChunks(data, scene, oldChunk);
 
-    const oldChunk = updateChunkIds(gridChunk, directionX, directionY, config);
-    animateAndRemoveOldChunks(scene, oldChunk, gridChunk);
+    const parameters = generateNewChunkParameters(directions);
+    const newChunks = createAndAnimateNewChunks(scene, config, data, parameters);
 
-    const parameters = generateNewChunkParameters(directionX, directionY);
-    const newChunks = createAndAnimateNewChunks(scene, config, heightData, parameters, gridChunk);
-
-    updateRemainingChunksPositions(gridChunk, oldChunk, newChunks, directionX, directionY, meshStepSize);
+    updateRemainingChunksPositions(config, data, oldChunk, newChunks, directions);
 }
 
 // Handles zooming in and out by updating chunk size
-export function handleZoom(config, direction) {
+export function handleZoom(config, data, zoomIncrement) {
     const oldChunkSize = config.chunkSizes[config.chunkSizeIndex];
     
     config.chunkSizeIndex = THREE.MathUtils.clamp(
-        config.chunkSizeIndex + direction,
+        config.chunkSizeIndex + zoomIncrement,
         0,
         config.chunkSizes.length - 1
     );
     
     const newChunkSize = config.chunkSizes[config.chunkSizeIndex];
-    updateConfigChunkPosition(config, oldChunkSize / 2 - newChunkSize / 2);
+    adjustChunkPosition(data, {X: 1, Y: 1}, oldChunkSize / 2 - newChunkSize / 2);
     console.log(`Chunk size: ${newChunkSize}`);
 }

@@ -18,17 +18,20 @@ socket.on('disconnect', () => { console.log('Disconnected from server'); });
 const config = {
     chunkSizes: [10, 20, 50, 100, 200, 500, 750, 1000, 1500],
     chunkSizeIndex: 4,
-    chunkPosition: { x: 200.0, y: 200.0 },
-    meshPosition: { x: 0, y: 0 , z: 0 },
     scale: { height: 20, plane: 10 },
-    mapSize: { width: 10000, height: 10000 },     // to be updated after loading height data
     moveStepScale: 0.25,
     cameraPosition: { x: -5, y: 5, z: 0 },
     opacity: { center: 1.0, other: 0.3 },
+    animationDuration: 1000,
 };
 
-let gridChunk = [];
-let heightData = null;
+const data = {
+    heightData: null,
+    mapSize: { width: 0, height: 0 },
+    gridChunk: [],
+    chunkPosition: { x: 200.0, y: 200.0 },
+    meshPosition: { x: 0, y: 0 , z: 0 },
+};
 
 function animate() {
     requestAnimationFrame(animate);
@@ -46,16 +49,16 @@ const loadingOverlay = document.getElementById('loading-overlay');
 loadingOverlay.style.display = 'flex';
 
 // Load height data and start application
-loadHeightData('data/height_cache_H282.bin').then(({ heightData: data, rows, cols }) => {
-    heightData = data;
-    config.mapSize.width = rows;
-    config.mapSize.height = cols;
+loadHeightData('data/height_cache_H282.bin').then(({ heightData, rows, cols }) => {
+    data.heightData = heightData;
+    data.mapSize.width = rows;
+    data.mapSize.height = cols;
     
-    gridChunk.forEach(chunk => scene.remove(chunk.mesh));
-    gridChunk = generateTerrainChunks(config, heightData);
-    gridChunk.forEach(chunk => scene.add(chunk.mesh));
+    data.gridChunk.forEach(chunk => scene.remove(chunk.mesh));
+    data.gridChunk = generateTerrainChunks(config, data);
+    data.gridChunk.forEach(chunk => scene.add(chunk.mesh));
     controls.update();
-    updateChunkLocationDisplay(config);
+    updateChunkLocationDisplay(data);
     // Hide loading overlay
     loadingOverlay.style.display = 'none';
     // Animation loop
@@ -69,12 +72,12 @@ window.addEventListener('resize', () => handleWindowResize(camera, renderer), fa
 
 // Handle keyboard movement
 document.addEventListener('keydown', (event) => {
-    handleMovement(event.key, scene, config, heightData, gridChunk);
+    handleMovement(config, data, scene, event.key);
 });
 
 // Handle button movement
 const buttons = ['up', 'down', 'left', 'right'];
 buttons.forEach(direction => {
     const button = document.getElementById(`move-${direction}`);
-    button.addEventListener('click', () => handleButtonMovement(direction, scene, config, heightData, gridChunk));
+    button.addEventListener('click', () => handleButtonMovement(config, data, scene, direction));
 });
