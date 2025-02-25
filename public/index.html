@@ -72,6 +72,7 @@
     <script type="module">
         import * as THREE from 'three';
         import { ImprovedNoise } from 'jsm/math/ImprovedNoise.js';
+        import { indexToXYMap } from './js/terrain.js';
         import { initScene, setupAmbientLighting } from './js/sceneSetup.js';
 
         const config = {
@@ -89,10 +90,7 @@
         const Noises = new ImprovedNoise();
         const totalVertices = config.chunkSize * config.chunkSize;
 
-        const positionToGrid = new Array(totalVertices).fill(0).map((_, i) => ({
-            x: (i % config.chunkSize) / config.chunkSize * 2 - 1,
-            y: Math.floor(i / config.chunkSize) / config.chunkSize * 2 - 1
-        }));
+        const positionToGrid = indexToXYMap(totalVertices);
 
         const octaveValues = new Array(config.octaves).fill(0).map((_, j) => ({
             frequency: Math.pow(2, j),

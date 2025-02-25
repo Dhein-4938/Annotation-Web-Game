@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import gsap from "gsap";
-import { createTerrainForPosition, generateTerrainChunks } from './terrain.js';
+import { createTerrainChunkAtPosition, createTerrainChunks } from './terrain.js';
 
 // Updates the display of the current chunk location
 export function updateChunkLocationDisplay(data) {
@@ -63,7 +63,7 @@ function fadeInNewChunks(scene, config, data, directions) {
     const parameters = generateNewChunkParameters(directions);
     
     const newChunks = parameters.map(({ gridX, gridY, id }) => 
-        createTerrainForPosition(config, data, { gridX, gridY, opacity: config.opacity.other, id })
+        createTerrainChunkAtPosition(config, data, { gridX, gridY, opacity: config.opacity.other, id })
     );
 
     newChunks.forEach(chunk => {
@@ -126,7 +126,7 @@ export function handleZoom(config, data, scene, zoomIncrement) {
     data.chunkPosition.y += (oldChunkSize - newChunkSize) / 2;
 
     data.gridChunk.forEach(chunk => scene.remove(chunk.mesh));
-    data.gridChunk = generateTerrainChunks(config, data);
+    data.gridChunk = createTerrainChunks(config, data);
     data.gridChunk.forEach(chunk => scene.add(chunk.mesh));
     updateChunkLocationDisplay(data);
     console.log(`Chunk size: ${newChunkSize}`);
