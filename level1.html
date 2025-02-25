@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinder Level 1</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+        }
+        #controls button {
+            display: block;
+            margin: 5px 0;
+        }
+        #chunk-location {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            font-size: 24px;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.167/build/three.module.js",
+                "jsm/": "https://cdn.jsdelivr.net/npm/three@0.167/examples/jsm/",
+                "socket.io-client": "https://cdn.socket.io/4.5.4/socket.io.esm.min.js",
+                "gsap": "https://cdn.skypack.dev/gsap"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="controls">
+        <button id="move-up">Up</button>
+        <button id="move-down">Down</button>
+        <button id="move-left">Left</button>
+        <button id="move-right">Right</button>
+    </div>
+    <div id="chunk-location">Chunk: (200, 200)</div>
+    <div id="loading-overlay">Loading...</div>
+    <script type="module">
+        import { initializeMap } from './js/map.js';
+
+        const config = {
+            chunkSizes: [10, 20, 50, 100, 200, 500, 750, 1000, 1500],
+            scale: { height: 20, plane: 10 },
+            moveStepScale: 0.25,
+            cameraPosition: { x: -5, y: 5, z: 0 },
+            opacity: { center: 1.0, other: 0.3 },
+            animationDuration: 300, // Animation duration in milliseconds
+        };
+
+        const data = {
+            heightData: null,
+            mapSize: { width: 0, height: 0 },
+            gridChunk: [],
+            chunkPosition: { x: 200.0, y: 200.0 },
+            meshPosition: { x: 0, y: 0 , z: 0 },
+            chunkSizeIndex: 4,
+        };
+
+        initializeMap(config, data, 'data/height_cache_H282.bin');
+
+    </script>
+</body>
+</html>
