@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { io } from 'socket.io-client';
-import { initScene, setupLighting, setupControls } from './sceneSetup.js';
+import { initScene, setupDirectLighting, setupControls } from './sceneSetup.js';
 import { loadHeightData, generateTerrainChunks } from './terrain.js';
 import { handleWindowResize, handleMovement, handleButtonMovement } from './eventHandlers.js';
 import { updateChunkLocationDisplay } from './movement.js';
@@ -40,9 +40,10 @@ function animate() {
 }
 
 // Initialize application
-const { scene, camera, renderer } = initScene(config);
+const { scene, camera, renderer } = initScene();
+camera.position.set(config.cameraPosition.x, config.cameraPosition.y, config.cameraPosition.z);
 const controls = setupControls(camera, renderer);
-setupLighting(scene);
+setupDirectLighting(scene);
 
 // Show loading overlay
 const loadingOverlay = document.getElementById('loading-overlay');

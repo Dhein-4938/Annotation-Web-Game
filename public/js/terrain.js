@@ -31,7 +31,7 @@ export function updateGeometryHeights(geometry, config, data, position) {
         const dataY = Math.floor(position.y + col);
         
         const heightValue = heightData[dataX]?.[dataY];
-        heightValues[i] = heightValue !== undefined 
+        vertices[i * 3 + 2] = heightValue !== undefined 
             ? heightValue * config.scale.height             // If height value exists, scale it
             : 0;                                            // Default to 0 if not found
     }
