@@ -1,6 +1,6 @@
-# Pathfinder Chronicles
+# Pathfinder
 
-**Pathfinder Chronicles** is an engaging annotation game that transforms the process of mapping 2D height map data into an immersive adventure. In this game, you step into the shoes of an elite cartographer tasked with exploring uncharted mountain ranges to create safe paths for adventurers, rescue missions, or treasure hunts. This README provides an in-depth look at the game’s narrative, mechanics, features, technical considerations, and future improvements.
+**Pathfinder** is an engaging annotation game that transforms the process of mapping 2D height map data into an immersive adventure. In this game, you step into the shoes of an elite cartographer tasked with exploring uncharted mountain ranges to create safe paths for adventurers, rescue missions, or treasure hunts. This README provides an in-depth look at the game’s narrative, mechanics, features, technical considerations, and future improvements.
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## Overview
 
-**Pathfinder Chronicles** takes the traditional task of data annotation and reinvents it as a fun, interactive, and narrative-driven game. Players annotate 2D height maps by placing points that define optimal paths across rugged terrain. These paths are dynamically visualized in 3D, providing immediate feedback and encouraging refinement through intuitive controls. As you complete sections of the map, your progress unfolds into a larger world filled with secrets, challenges, and story revelations.
+**Pathfinder** takes the traditional task of data annotation and reinvents it as a fun, interactive, and narrative-driven game. Players annotate 2D height maps by placing points that define optimal paths across rugged terrain. These paths are dynamically visualized in 3D, providing immediate feedback and encouraging refinement through intuitive controls. As you complete sections of the map, your progress unfolds into a larger world filled with secrets, challenges, and story revelations.
 
 ---
 
